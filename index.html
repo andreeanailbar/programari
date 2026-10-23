@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programări manichiură și pedichiură</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --pink:#F875AA; --blush:#FDEDED; --mint:#EDFFF0; --sky:#AEDEFC;
+  --ink:#3B2230; --muted:#7A6071; --line:rgba(59,34,48,.14);
+  --card:rgba(253,237,237,.74); --solid:#fff;
+  --glow:rgba(248,117,170,.55); --shadow:rgba(59,34,48,.22); --strike:rgba(59,34,48,.5);
+  --ok:#2E9E5B; --okink:#14532d; --err:#C0264B; --errbg:#fff0f3;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;min-height:100vh}
+/* fundal lava lamp */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:var(--blush)}
+.lava{position:absolute;inset:0;filter:url(#goo);opacity:.62}
+.lava i{position:absolute;display:block;width:var(--s);height:var(--s);left:var(--x);top:var(--y);background:var(--c);
+  border-radius:60% 40% 55% 45%/50% 60% 40% 50%;
+  animation:morph var(--d1) ease-in-out infinite alternate,drift var(--d2) ease-in-out infinite alternate}
+@keyframes morph{50%{border-radius:40% 60% 45% 55%/60% 40% 60% 40%}to{border-radius:55% 45% 60% 40%/45% 55% 45% 55%}}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--tx),var(--ty)) scale(1.18)}}
+main{max-width:660px;margin:0 auto;padding:40px 16px 72px}
+.hero{margin-bottom:26px;animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+.badge{display:inline-flex;align-items:center;gap:8px;background:var(--mint);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--pink);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}70%,100%{box-shadow:0 0 0 9px transparent}}
+h1{font:800 clamp(38px,9vw,60px)/1.02 "Bricolage Grotesque",Figtree,sans-serif;letter-spacing:-.035em;margin:16px 0 10px}
+h1 span{background:linear-gradient(transparent 62%,var(--pink) 62%,var(--pink) 90%,transparent 90%)}
+.lead{color:var(--muted);margin:0;font-size:17px}
+.card{position:relative;background:var(--card);border:1px solid rgba(255,255,255,.85);border-radius:24px;padding:22px;margin-bottom:16px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 22px 36px -26px var(--shadow),0 2px 6px rgba(59,34,48,.06);
+  animation:rise .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*90ms)}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}}
+h2{display:flex;align-items:center;gap:10px;font:700 19px/1.2 "Bricolage Grotesque",Figtree,sans-serif;margin:0 0 16px}
+.step{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--sky);font-size:14px;font-weight:700;transition:background .3s,transform .3s}
+.card.done .step{background:var(--pink);font-size:0;transform:scale(1.08)}
+.card.done .step::after{content:"✓";font-size:15px}
+.svc-hint{margin:-6px 0 14px;font-size:14px;color:var(--muted)}
+.opts{display:grid;gap:10px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;cursor:pointer;z-index:1;margin:0}
+.opt input:disabled{cursor:not-allowed}
+.opt label{display:flex;align-items:center;gap:12px;border:2px solid var(--line);background:var(--mint);border-radius:16px;padding:14px 16px;transition:transform .2s,box-shadow .2s,border-color .2s,background .2s}
+.opt:not(.locked):hover label{transform:translateY(-2px);box-shadow:0 10px 18px -12px var(--shadow)}
+.box{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;border:2px solid rgba(59,34,48,.35);background:#fff;font-size:15px;font-weight:700;transition:background .2s,border-color .2s}
+.txt{flex:1;min-width:0}
+.nm{display:block;font-weight:600}
+.desc{display:block;font-size:13px;line-height:1.35;color:#65495a;margin-top:3px}
+.dur{flex:none;background:var(--sky);border-radius:999px;padding:3px 11px;font-size:13px;font-weight:600;white-space:nowrap}
+.opt input:checked+label{background:#FCD5E5;border-color:var(--pink);box-shadow:0 0 0 3px rgba(248,117,170,.3),0 12px 22px -14px var(--glow)}
+.opt input:checked+label .box{background:var(--pink);border-color:var(--pink)}
+.opt input:checked+label .box::after{content:"✓"}
+.opt.locked label{opacity:.45}
+.total{margin:14px 0 0;font-weight:600;font-size:14px;background:rgba(174,222,252,.5);border-radius:999px;display:inline-block;padding:4px 14px;animation:pop .3s both}
+.opt input:focus-visible+label,.chip:focus-visible,.day:focus-visible,.nav:focus-visible,button.go:focus-visible,button.alt:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+/* calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.calhead strong{font:700 18px "Bricolage Grotesque",Figtree,sans-serif;text-transform:capitalize}
+.nav{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--mint);color:var(--ink);font-size:20px;cursor:pointer;transition:transform .15s}
+.nav:hover:not(:disabled){transform:scale(1.08)}.nav:active:not(:disabled){transform:scale(.94)}
+.nav:disabled{opacity:.3;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.grid.swap{animation:fade .35s ease both}
+@keyframes fade{from{opacity:0;transform:translateX(10px)}}
+.dow{text-align:center;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:4px 0}
+.day{aspect-ratio:1;border:0;border-radius:50%;background:transparent;color:var(--ink);font:inherit;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}
+.day.avail{background:var(--mint);font-weight:600;box-shadow:inset 0 0 0 1.5px var(--line)}
+.day.avail:hover{transform:translateY(-3px) scale(1.06);background:var(--sky);box-shadow:0 10px 16px -10px var(--shadow)}
+.day.off{opacity:.28;cursor:default}
+.day.full{cursor:not-allowed;color:var(--muted);opacity:.55;
+  background:linear-gradient(to top right,transparent calc(50% - .8px),var(--strike) calc(50% - .8px),var(--strike) calc(50% + .8px),transparent calc(50% + .8px)),var(--mint)}
+.day[aria-pressed=true]{background:var(--pink);color:var(--ink);font-weight:700;box-shadow:0 12px 22px -8px var(--glow);transform:scale(1.08)}
+.grid.loading .day.avail,.grid.loading .day.off{animation:shimmer 1.1s ease-in-out infinite alternate;pointer-events:none}
+@keyframes shimmer{to{opacity:.35}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.k{width:16px;height:16px;border-radius:50%;display:inline-block;background:var(--mint);box-shadow:inset 0 0 0 1.5px var(--line)}
+.k.full{background:linear-gradient(to top right,transparent calc(50% - .8px),var(--strike) calc(50% - .8px),var(--strike) calc(50% + .8px),transparent calc(50% + .8px)),var(--mint);opacity:.6}
+.k.sel{background:var(--pink);box-shadow:none}
+.hint{color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--mint);color:var(--ink);border-radius:999px;padding:9px 18px;font:600 15px Figtree,sans-serif;cursor:pointer;min-width:76px;transition:transform .18s,box-shadow .18s,background .18s}
+.chip.pop{animation:pop .4s cubic-bezier(.3,1.5,.5,1) both;animation-delay:calc(var(--i)*40ms)}
+@keyframes pop{from{opacity:0;transform:scale(.7)}}
+.chip:hover:not(:disabled){transform:translateY(-2px);background:var(--sky);box-shadow:0 8px 14px -10px var(--shadow)}
+.chip[aria-pressed=true]{border-color:var(--pink);background:var(--pink);box-shadow:0 10px 18px -8px var(--glow)}
+.chip:disabled{opacity:.45;text-decoration:line-through;cursor:not-allowed}
+/* formular */
+.summary{border-radius:14px;padding:12px 16px;margin-bottom:16px;background:rgba(174,222,252,.5);border-left:4px solid var(--pink);font-weight:500}
+.reqnote{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.req{color:var(--err);font-weight:700}
+.field{display:grid;gap:5px;margin-bottom:14px}
+.field label{font-weight:600;font-size:14px}
+.field .sub{color:var(--muted);font-size:13px;font-weight:400}
+.tag{font-weight:500;color:var(--muted);font-size:12px;background:var(--sky);border-radius:999px;padding:1px 8px;margin-left:4px}
+input[type=text],input[type=tel],input[type=email],textarea{font:inherit;color:var(--ink);background:var(--solid);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;width:100%;transition:box-shadow .2s,border-color .2s}
+input:focus,textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(248,117,170,.35)}
+.field.invalid input{border-color:var(--err);background:var(--errbg);animation:shake .35s}
+.field.invalid label{color:var(--err)}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+button.go{position:relative;overflow:hidden;width:100%;font:700 17px Figtree,sans-serif;background:var(--pink);color:var(--ink);border:0;border-radius:16px;padding:16px;cursor:pointer;box-shadow:0 16px 26px -14px var(--glow);transition:transform .15s,box-shadow .2s}
+button.go::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 65%);transform:translateX(-120%);transition:transform .6s}
+button.go:hover:not(:disabled)::after{transform:translateX(120%)}
+button.go:hover:not(:disabled){transform:translateY(-2px)}
+button.go:active:not(:disabled){transform:scale(.98)}
+button.go:disabled{opacity:.6;cursor:wait}
+.msg{border-radius:12px;padding:12px 14px;margin-top:12px;background:var(--errbg);color:var(--err);border:1px solid var(--err);animation:rise .3s both}
+.done{position:relative;overflow:hidden;background:var(--mint);color:var(--okink);border:2px solid var(--ok);border-radius:24px;padding:24px;margin-bottom:16px;box-shadow:0 22px 36px -26px var(--ok);animation:rise .5s cubic-bezier(.3,1.4,.5,1) both}
+.done h2{font-size:21px;align-items:flex-start;margin-bottom:8px}
+.done p{margin:6px 0 0}
+.tick{flex:none;width:44px;height:44px;fill:none;stroke:var(--ok)}
+.tick circle{stroke-width:3;stroke-dasharray:152;stroke-dashoffset:152;animation:draw .6s ease forwards}
+.tick path{stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .4s .5s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+button.alt{margin-top:16px;font:600 15px Figtree,sans-serif;background:transparent;color:var(--okink);border:1.5px solid var(--ok);border-radius:999px;padding:10px 18px;cursor:pointer}
+.cf{position:absolute;top:0;width:8px;height:12px;border-radius:50%;animation:fall 2.2s ease-out forwards;pointer-events:none}
+@keyframes fall{to{transform:translate(var(--dx),230px) rotate(600deg);opacity:0}}
+.demo{background:var(--sky);border-radius:14px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="22" result="b"/><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9"/></filter>
+</defs></svg>
+<div class="bg" aria-hidden="true"><div class="lava">
+  <i style="--s:46vmax;--x:-12%;--y:-8%;--c:#F875AA;--tx:22vmax;--ty:26vh;--d1:11s;--d2:24s"></i>
+  <i style="--s:34vmax;--x:62%;--y:4%;--c:#AEDEFC;--tx:-20vmax;--ty:34vh;--d1:13s;--d2:28s"></i>
+  <i style="--s:30vmax;--x:8%;--y:58%;--c:#AEDEFC;--tx:26vmax;--ty:-30vh;--d1:10s;--d2:22s"></i>
+  <i style="--s:40vmax;--x:58%;--y:62%;--c:#F875AA;--tx:-24vmax;--ty:-34vh;--d1:14s;--d2:30s"></i>
+  <i style="--s:26vmax;--x:34%;--y:30%;--c:#EDFFF0;--tx:14vmax;--ty:24vh;--d1:9s;--d2:20s"></i>
+  <i style="--s:22vmax;--x:78%;--y:38%;--c:#EDFFF0;--tx:-30vmax;--ty:20vh;--d1:12s;--d2:26s"></i>
+</div></div>
+
+<main>
+  <header class="hero">
+    <span class="badge"><span class="dot"></span>Rezervări online · luni–vineri · 18:00–21:00</span>
+    <h1><span>Programează-te</span></h1>
+    <p class="lead">Alege serviciul, ziua și ora. Primești confirmarea pe email.</p>
+  </header>
+  <div class="demo" id="demo" hidden>Mod demonstrativ: adresa Google Apps Script nu e setată, deci nimic nu se salvează, iar zilele tăiate din calendar sunt doar exemple.</div>
+
+  <div class="done" id="done" hidden role="status">
+    <h2><svg class="tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M14 27l8 8 16-17"/></svg><span id="doneTitle"></span></h2>
+    <p id="doneText"></p>
+    <button type="button" class="alt" id="again">Fă altă programare</button>
+  </div>
+
+  <div id="flow">
+    <section class="card" id="s1" style="--i:1">
+      <h2><span class="step">1</span>Servicii</h2>
+      <p class="svc-hint">Poți alege o manichiură, o pedichiură sau ambele (maximum una din fiecare).</p>
+      <div class="opts" id="services"></div>
+      <p class="total" id="totalInfo" hidden></p>
+      <p class="msg" id="svcErr" hidden role="alert"></p>
+    </section>
+
+    <section class="card" id="s2" style="--i:2">
+      <h2><span class="step">2</span>Calendar</h2>
+      <div class="calhead">
+        <button type="button" class="nav" id="prev" aria-label="Luna anterioară">‹</button>
+        <strong id="monthLabel"></strong>
+        <button type="button" class="nav" id="next" aria-label="Luna următoare">›</button>
+      </div>
+      <div class="grid" id="cal"></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="k"></i>Zi cu ore libere</span>
+        <span><i class="k full"></i>Fără ore libere</span>
+        <span><i class="k sel"></i>Ziua aleasă</span>
+      </div>
+      <p class="hint" id="calHint" hidden style="margin-top:10px">Se încarcă disponibilitatea…</p>
+    </section>
+
+    <section class="card" id="s3" style="--i:3">
+      <h2><span class="step">3</span>Oră</h2>
+      <p class="hint" id="slotsHint">Alege mai întâi serviciile și ziua.</p>
+      <div class="chips" id="slots"></div>
+      <p class="hint" id="slotsNote" hidden style="margin-top:12px"></p>
+    </section>
+
+    <section class="card" id="formSec" hidden>
+      <h2><span class="step">4</span>Datele tale</h2>
+      <div class="summary" id="summary"></div>
+      <p class="reqnote"><span class="req">*</span> câmp obligatoriu</p>
+      <div class="field"><label for="nume">Nume <span class="req" aria-hidden="true">*</span></label><input type="text" id="nume" autocomplete="name" required aria-required="true"></div>
+      <div class="field"><label for="tel">Telefon <span class="req" aria-hidden="true">*</span></label><input type="tel" id="tel" autocomplete="tel" required aria-required="true"></div>
+      <div class="field"><label for="email">Email <span class="req" aria-hidden="true">*</span> <span class="sub">· aici primești confirmarea</span></label><input type="email" id="email" autocomplete="email" required aria-required="true"></div>
+      <div class="field"><label for="note">Mențiuni <span class="tag">opțional</span></label><textarea id="note" rows="2"></textarea></div>
+      <button class="go" id="send">Trimite programarea</button>
+      <div class="msg" id="result" hidden role="alert"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+// ====== SETĂRI ======
+// Lipește aici adresa web app din Google Apps Script (se termină cu /exec)
+const APPS_SCRIPT_URL = "";
+const TZ = "Europe/Bucharest";
+const OPEN = 18 * 60, CLOSE = 21 * 60, STEP = 30;   // 18:00–21:00, din 30 în 30 min
+const DAYS_AHEAD = 90;
+const SERVICES = [
+  { id: "mani-semi",   cat: "mani", name: "Manichiură semi simplă",         min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design micuț" },
+  { id: "mani-design", cat: "mani", name: "Manichiură semi design complex", min: 120, desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design detaliat" },
+  { id: "pedi",        cat: "pedi", name: "Pedichiură clasică",             min: 60,  desc: "Stilizare, curățare cuticulă, aplicare ojă transparentă clasică" },
+  { id: "pedi-semi",   cat: "pedi", name: "Pedichiură semi",                min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi" }
+];
+// =====================
+
+const $ = id => document.getElementById(id);
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const state = { services: [], date: null, time: null, busy: {}, loading: false };
+const fmtDur = m => (m >= 60 ? Math.floor(m / 60) + "h" : "") + (m % 60 ? " " + (m % 60) + "m" : "");
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const monthNames = ["ianuarie","februarie","martie","aprilie","mai","iunie","iulie","august","septembrie","octombrie","noiembrie","decembrie"];
+const dayNames = ["duminică","luni","marți","miercuri","joi","vineri","sâmbătă"];
+const iso = d => d.toISOString().slice(0, 10);
+const longDate = s => { const d = new Date(s + "T00:00:00Z"); return dayNames[d.getUTCDay()] + ", " + d.getUTCDate() + " " + monthNames[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
+const shortest = Math.min(...SERVICES.map(s => s.min));
+
+if (!APPS_SCRIPT_URL) $("demo").hidden = false;
+
+// Cea mai târzie oră de start: programarea se termină până la 21:00; dacă durează peste 3h, începe la 18:00 și poate depăși programul
+const latestStart = d => Math.max(OPEN, CLOSE - d);
+// Există cel puțin un interval liber, de durata dată, în ziua respectivă?
+function hasSlot(date, dur) {
+  const busy = state.busy[date];
+  if (!busy) return true; // necunoscut: considerăm liber, se verifică la alegere
+  for (let s = OPEN; s <= latestStart(dur); s += STEP) if (!busy.some(([a, b]) => s < b && s + dur > a)) return true;
+  return false;
+}
+
+// ---- Servicii (selecție multiplă) ----
+const totalMin = () => state.services.reduce((a, s) => a + s.min, 0);
+const MAXMIN = CLOSE - OPEN;
+function refreshServices() {
+  const t = totalMin(), el = $("totalInfo");
+  el.hidden = !t;
+  if (t) el.textContent = "Durată totală: " + fmtDur(t) + (t > MAXMIN ? " · se termină după ora " + hhmm(CLOSE) : "");
+}
+let errTimer;
+function svcError(msg) {
+  const e = $("svcErr"); e.textContent = msg; e.hidden = false;
+  clearTimeout(errTimer); errTimer = setTimeout(() => { e.hidden = true; }, 7000);
+}
+SERVICES.forEach(s => {
+  const d = document.createElement("div");
+  d.className = "opt";
+  d.innerHTML = `<input type="checkbox" id="svc-${s.id}" value="${s.id}"><label for="svc-${s.id}"><span class="box" aria-hidden="true"></span><span class="txt"><span class="nm">${s.name}</span><span class="desc">${s.desc}</span></span><span class="dur">${fmtDur(s.min)}</span></label>`;
+  d.querySelector("input").addEventListener("change", e => {
+    if (e.target.checked) {
+      const clash = SERVICES.find(x => x.cat === s.cat && x.id !== s.id && $("svc-" + x.id).checked);
+      if (clash) {
+        e.target.checked = false;
+        svcError("Poți alege o singură manichiură și o singură pedichiură. Ai deja „" + clash.name + "” bifat; debifează-o dacă vrei să schimbi.");
+        return;
+      }
+    }
+    $("svcErr").hidden = true;
+    state.services = SERVICES.filter(x => $("svc-" + x.id).checked);
+    state.time = null;
+    if (state.date && state.services.length && !hasSlot(state.date, totalMin())) state.date = null;
+    refreshServices(); renderCal(); renderSlots(true);
+  });
+  $("services").appendChild(d);
+});
+
+// ---- Calendar lunar ----
+function todayRO() {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+const minDate = todayRO(); minDate.setUTCDate(minDate.getUTCDate() + 1);
+const maxDate = todayRO(); maxDate.setUTCDate(maxDate.getUTCDate() + DAYS_AHEAD);
+let viewY = minDate.getUTCFullYear(), viewM = minDate.getUTCMonth();
+const monthIdx = (y, m) => y * 12 + m;
+
+// Doar pentru previzualizare (când nu e setată adresa scriptului): câteva zile ocupate de exemplu
+function seedDemo() {
+  let n = 0;
+  for (let k = 0; k < DAYS_AHEAD; k++) {
+    const d = new Date(minDate); d.setUTCDate(d.getUTCDate() + k);
+    const wd = d.getUTCDay(); if (wd < 1 || wd > 5) continue;
+    n++;
+    if (n % 5 === 3) state.busy[iso(d)] = [[OPEN, CLOSE]];
+    else if (n % 3 === 0) state.busy[iso(d)] = [[OPEN + 60, OPEN + 120]];
+  }
+}
+if (!APPS_SCRIPT_URL) seedDemo();
+
+function renderCal(swap) {
+  $("monthLabel").textContent = monthNames[viewM] + " " + viewY;
+  $("prev").disabled = monthIdx(viewY, viewM) <= monthIdx(minDate.getUTCFullYear(), minDate.getUTCMonth());
+  $("next").disabled = monthIdx(viewY, viewM) >= monthIdx(maxDate.getUTCFullYear(), maxDate.getUTCMonth());
+  const g = $("cal"); g.innerHTML = "";
+  g.classList.toggle("loading", state.loading); $("calHint").hidden = !state.loading;
+  if (swap && !REDUCED) { g.classList.remove("swap"); void g.offsetWidth; g.classList.add("swap"); }
+  ["lu","ma","mi","jo","vi","sâ","du"].forEach(n => { const h = document.createElement("div"); h.className = "dow"; h.textContent = n; g.appendChild(h); });
+  const offset = (new Date(Date.UTC(viewY, viewM, 1)).getUTCDay() + 6) % 7;
+  for (let i = 0; i < offset; i++) g.appendChild(document.createElement("div"));
+  const need = totalMin() || shortest;
+  const days = new Date(Date.UTC(viewY, viewM + 1, 0)).getUTCDate();
+  for (let n = 1; n <= days; n++) {
+    const d = new Date(Date.UTC(viewY, viewM, n)), wd = d.getUTCDay(), key = iso(d);
+    const inRange = wd >= 1 && wd <= 5 && d >= minDate && d <= maxDate;
+    const full = inRange && !hasSlot(key, need);
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = n;
+    b.className = "day " + (!inRange ? "off" : full ? "full" : "avail");
+    b.disabled = !inRange || full || state.loading;
+    b.setAttribute("aria-pressed", String(key === state.date));
+    b.setAttribute("aria-label", longDate(key) + (full ? " – fără ore libere" : ""));
+    b.addEventListener("click", async () => {
+      state.date = key; state.time = null; renderCal();
+      await loadBusy(key); renderSlots(true);
+    });
+    g.appendChild(b);
+  }
+}
+$("prev").addEventListener("click", () => { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderCal(true); });
+$("next").addEventListener("click", () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderCal(true); });
+
+// ---- Disponibilitate din Google Calendar ----
+async function loadRange() {
+  if (!APPS_SCRIPT_URL) return;
+  state.loading = true; renderCal();
+  try {
+    const r = await fetch(APPS_SCRIPT_URL + "?action=range&from=" + iso(minDate) + "&to=" + iso(maxDate));
+    const j = await r.json();
+    if (j.ok) Object.assign(state.busy, j.days);
+  } catch (e) { console.error(e); }
+  state.loading = false; renderCal();
+}
+async function loadBusy(date) {
+  if (!APPS_SCRIPT_URL || state.busy[date]) return;
+  $("slotsHint").hidden = false; $("slotsHint").textContent = "Se verifică orele libere…"; $("slots").innerHTML = "";
+  try {
+    const r = await fetch(APPS_SCRIPT_URL + "?action=busy&date=" + date);
+    const j = await r.json();
+    state.busy[date] = j.busy || [];
+  } catch (e) { console.error(e); state.busy[date] = null; }
+}
+
+function updateSteps() {
+  $("s1").classList.toggle("done", state.services.length > 0);
+  $("s2").classList.toggle("done", !!state.date);
+  $("s3").classList.toggle("done", state.time !== null);
+}
+
+function renderSlots(animate) {
+  const box = $("slots"); box.innerHTML = ""; $("slotsNote").hidden = true;
+  $("formSec").hidden = state.time === null;
+  updateSteps();
+  if (!state.services.length || !state.date) { $("slotsHint").hidden = false; $("slotsHint").textContent = "Alege mai întâi serviciile și ziua."; return; }
+  const busy = state.busy[state.date];
+  if (APPS_SCRIPT_URL && busy === null) { $("slotsHint").hidden = false; $("slotsHint").textContent = "Nu am putut încărca orele libere. Reîncarcă pagina și încearcă din nou."; return; }
+  $("slotsHint").hidden = true;
+  let any = false, i = 0;
+  const dur = totalMin();
+  const note = $("slotsNote"); note.hidden = dur <= MAXMIN;
+  note.textContent = "Serviciile alese durează peste 3 ore, așa că programarea începe la " + hhmm(OPEN) + " și se termină după ora " + hhmm(CLOSE) + ".";
+  for (let s = OPEN; s <= latestStart(dur); s += STEP) {
+    const e = s + dur;
+    const taken = (busy || []).some(([bs, be]) => s < be && e > bs);
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip" + (animate ? " pop" : ""); b.style.setProperty("--i", i++); b.textContent = hhmm(s);
+    b.setAttribute("aria-pressed", String(state.time === s));
+    b.disabled = taken; if (!taken) any = true;
+    b.addEventListener("click", () => { state.time = s; renderSlots(false); });
+    box.appendChild(b);
+  }
+  if (!any) { $("slotsHint").hidden = false; $("slotsHint").textContent = "Nu mai sunt ore libere în această zi pentru această selecție. Alege altă zi."; }
+  if (state.time !== null) showForm();
+}
+
+function showForm() {
+  const t = totalMin();
+  $("summary").textContent = `${state.services.map(s => s.name).join(" + ")} (${fmtDur(t)}) · ${longDate(state.date)} · ${hhmm(state.time)}–${hhmm(state.time + t)}`;
+  $("formSec").hidden = false;
+}
+
+// ---- Trimitere ----
+const specs = [["nume", v => v.length > 1], ["tel", v => /^[+\d][\d\s().-]{6,}$/.test(v)], ["email", v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)]];
+specs.forEach(([id]) => $(id).addEventListener("input", e => { e.target.closest(".field").classList.remove("invalid"); e.target.removeAttribute("aria-invalid"); }));
+
+function confetti() {
+  if (REDUCED) return;
+  const box = $("done"), colors = ["#F875AA", "#AEDEFC", "#2E9E5B", "#3B2230"];
+  for (let i = 0; i < 28; i++) {
+    const c = document.createElement("i"); c.className = "cf";
+    c.style.left = Math.random() * 100 + "%"; c.style.background = colors[i % colors.length];
+    c.style.setProperty("--dx", (Math.random() * 120 - 60) + "px"); c.style.animationDelay = Math.random() * .3 + "s";
+    box.appendChild(c); setTimeout(() => c.remove(), 2800);
+  }
+}
+
+$("send").addEventListener("click", async () => {
+  const res = $("result");
+  const fail = t => { res.textContent = t; res.hidden = false; };
+  res.hidden = true;
+  const bad = specs.filter(([id, ok]) => {
+    const el = $(id), isBad = !ok(el.value.trim());
+    el.closest(".field").classList.toggle("invalid", isBad);
+    if (isBad) el.setAttribute("aria-invalid", "true");
+    return isBad;
+  });
+  if (bad.length) { fail("Completează corect câmpurile marcate cu *."); $(bad[0][0]).focus(); return; }
+  const btn = $("send"); btn.disabled = true; btn.textContent = "Se trimite…";
+  const payload = {
+    services: state.services.map(s => s.name), service: state.services.map(s => s.name).join(" + "), minutes: totalMin(),
+    date: state.date, start: hhmm(state.time),
+    name: $("nume").value.trim(), phone: $("tel").value.trim(), email: $("email").value.trim(), note: $("note").value.trim()
+  };
+  try {
+    let j;
+    if (!APPS_SCRIPT_URL) { j = { ok: true, demo: true }; }
+    else {
+      const r = await fetch(APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+      j = await r.json();
+    }
+    if (j.ok) {
+      $("doneTitle").textContent = "Programare confirmată: " + payload.service + ", " + longDate(payload.date) + ", " + payload.start;
+      $("doneText").textContent = j.demo
+        ? "Mod demonstrativ: nimic nu a fost salvat și nu s-a trimis niciun email."
+        : j.emailSent
+          ? "Ți-am trimis un email de confirmare la " + payload.email + ", cu butonul pentru a adăuga programarea în Google Calendar."
+          : "Programarea este înregistrată, dar nu am putut trimite emailul de confirmare. Salvează-ți data și ora.";
+      $("flow").hidden = true; $("done").hidden = false;
+      window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
+      confetti();
+      if (APPS_SCRIPT_URL) { delete state.busy[payload.date]; loadBusy(payload.date).then(() => renderCal()); }
+    } else {
+      fail(j.error || "Nu s-a putut face programarea.");
+      delete state.busy[state.date]; await loadBusy(state.date); renderCal(); renderSlots(false);
+    }
+  } catch (e) { console.error(e); fail("Eroare de conexiune. Încearcă din nou."); }
+  btn.disabled = false; btn.textContent = "Trimite programarea";
+});
+
+$("again").addEventListener("click", () => {
+  state.time = null; $("done").hidden = true; $("flow").hidden = false;
+  renderCal(); renderSlots(true); window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
+});
+
+renderCal();
+loadRange();
+</script>
+</body>
+</html>
