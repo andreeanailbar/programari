@@ -138,6 +138,8 @@ button.alt{margin-top:16px;font:600 15px Figtree,sans-serif;background:transpare
 .cf{position:absolute;top:0;width:8px;height:12px;border-radius:50%;animation:fall 2.2s ease-out forwards;pointer-events:none}
 @keyframes fall{to{transform:translate(var(--dx),230px) rotate(600deg);opacity:0}}
 .demo{background:var(--sky);border-radius:14px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.toast{position:fixed;left:0;right:0;margin:0 auto;top:16px;width:fit-content;max-width:min(92vw,460px);z-index:20;background:var(--errbg);color:var(--err);border:1px solid var(--err);border-radius:14px;padding:12px 16px;font-weight:500;box-shadow:0 16px 30px -14px var(--shadow);animation:rise .3s both}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.spin{animation:spin 1.4s linear infinite!important}}
 </style>
@@ -193,6 +195,7 @@ button.alt{margin-top:16px;font:600 15px Figtree,sans-serif;background:transpare
         <span><i class="k sp"></i>Zi cu program special</span>
       </div>
       <div class="calwait" id="calWait" hidden role="status" aria-live="polite"><div class="spin" aria-hidden="true"></div><p>Datele disponibile se încarcă în câteva momente…<small>Te ducem automat la calendar când e gata. Te rugăm să nu închizi pagina.</small></p></div>
+      <div class="calwait" id="calDown" hidden role="alert"><p>Serviciul de programări nu răspunde momentan.<small>Nu am putut încărca disponibilitatea. Verifică conexiunea la internet sau încearcă din nou mai târziu.</small><button type="button" class="next" id="retry" style="margin-top:12px">Încearcă din nou</button></p></div>
     </section>
 
     <section class="card" id="s3" style="--i:0" hidden>
@@ -207,42 +210,44 @@ button.alt{margin-top:16px;font:600 15px Figtree,sans-serif;background:transpare
       <div class="summary" id="summary"></div>
       <p class="reqnote"><span class="req">*</span> câmp obligatoriu</p>
       <div class="field"><label for="nume">Nume <span class="req" aria-hidden="true">*</span></label><input type="text" id="nume" autocomplete="name" required aria-required="true"></div>
-      <div class="field"><label for="tel">Telefon <span class="req" aria-hidden="true">*</span></label><input type="tel" id="tel" autocomplete="tel" required aria-required="true"></div>
       <div class="field"><label for="email">Email <span class="req" aria-hidden="true">*</span> <span class="sub">· aici primești confirmarea</span></label><input type="email" id="email" autocomplete="email" required aria-required="true"></div>
       <div class="field"><label for="note">Mențiuni <span class="tag">opțional</span></label><textarea id="note" rows="2"></textarea></div>
+      <div class="hp" aria-hidden="true"><label>Nu completa acest câmp<input type="text" id="website" tabindex="-1" autocomplete="off"></label></div>
       <button class="go" id="send">Trimite programarea</button>
       <div class="msg" id="result" hidden role="alert"></div>
     </section>
   </div>
 </main>
 
+<div class="toast" id="toast" hidden role="alert"></div>
+
 <script>
 // ====== SETĂRI ======
 // Lipește aici adresa web app din Google Apps Script (se termină cu /exec)
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6XRgiHv_tSXTbMypQyGDm0YstB2_1o-MRA0KwozJaxRjxo95_3bN1dhLJ1qFOemq_/exec";
 const TZ = "Europe/Bucharest";
-const OPEN = 18 * 60, CLOSE = 21 * 60, STEP = 30;   // programul obișnuit, luni–vineri: 18:00–21:00, din 30 în 30 min
-const DAYS_AHEAD = 70;
-// Zile cu program special: [deschidere, închidere] în minute. Se adaugă identic și în Code.gs
-const SPECIAL_DAYS = {
-  "2026-11-15": [10 * 60, 18 * 60],
-  "2026-11-22": [10 * 60, 18 * 60],
-  "2026-12-06": [10 * 60, 18 * 60],
-  "2026-12-13": [10 * 60, 18 * 60],
-  "2026-12-20": [10 * 60, 18 * 60]
-};
+const STEP = 30;                   // orele se oferă din 30 în 30 de minute
+const DAYS_AHEAD = 70;             // cu câte zile înainte se poate face o programare
+const STALE_MS = 5 * 60 * 1000;    // disponibilitatea se reîncarcă dacă pagina stă deschisă mai mult de 5 minute
+// Programul zilelor (luni–vineri, zilele speciale) și pauza minimă vin din Code.gs.
+// Valorile de mai jos se folosesc DOAR în previzualizare, când adresa scriptului nu e setată.
+const DEMO = { open: 18 * 60, close: 21 * 60, minGap: 60,
+  special: { "2026-11-15": [600, 1080], "2026-11-22": [600, 1080], "2026-12-06": [600, 1080], "2026-12-13": [600, 1080], "2026-12-20": [600, 1080] } };
 const SERVICES = [
-  { id: "mani-semi",   cat: "mani", name: "Manichiură semi simplă",         min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design micuț" },
-  { id: "mani-design", cat: "mani", name: "Manichiură semi design complex", min: 120, desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design detaliat" },
-  { id: "pedi",        cat: "pedi", name: "Pedichiură clasică",             min: 60,  desc: "Stilizare, curățare cuticulă, aplicare ojă transparentă clasică" },
-  { id: "pedi-semi",   cat: "pedi", name: "Pedichiură semi",                min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi" }
+  { id: "mani-semi",    cat: "mani", name: "Manichiură semi simplă", min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design micuț" },
+  { id: "mani-design",  cat: "mani", name: "Manichiură semi cu design", min: 120, desc: "Stilizare, curățare cuticulă, aplicare ojă semi sau gel pe unghia naturală + design detaliat" },
+  { id: "mani-clasica", cat: "mani", name: "Manichiură clasică", min: 60,  desc: "Stilizare, curățare cuticulă, aplicare ojă transparentă clasică" },
+  { id: "pedi",         cat: "pedi", name: "Pedichiură clasică", min: 60,  desc: "Stilizare, curățare cuticulă, aplicare ojă transparentă clasică" },
+  { id: "pedi-semi",    cat: "pedi", name: "Pedichiură semi", min: 90,  desc: "Stilizare, curățare cuticulă, aplicare ojă semi" }
 ];
 // =====================
 
+const CFG = { open: DEMO.open, close: DEMO.close, minGap: DEMO.minGap }; // se suprascriu cu valorile primite de la script
 const $ = id => document.getElementById(id);
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const goTo = el => setTimeout(() => el.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" }), 80);
-const state = { services: [], date: null, time: null, busy: {}, loading: false };
+const state = { services: [], date: null, time: null, busy: {}, hours: {}, special: {}, loading: false, down: false,
+  refreshing: false, sending: false, loadedAt: 0, rid: null, ridKey: null };
 const fmtDur = m => (m >= 60 ? Math.floor(m / 60) + "h" : "") + (m % 60 ? " " + (m % 60) + "m" : "");
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const monthNames = ["ianuarie","februarie","martie","aprilie","mai","iunie","iulie","august","septembrie","octombrie","noiembrie","decembrie"];
@@ -250,33 +255,66 @@ const dayNames = ["duminică","luni","marți","miercuri","joi","vineri","sâmbă
 const iso = d => d.toISOString().slice(0, 10);
 const longDate = s => { const d = new Date(s + "T00:00:00Z"); return dayNames[d.getUTCDay()] + ", " + d.getUTCDate() + " " + monthNames[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
 const shortest = Math.min(...SERVICES.map(s => s.min));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
 if (!APPS_SCRIPT_URL) $("demo").hidden = false;
 
-// Programul unei zile: [deschidere, închidere] în minute, sau null dacă nu se fac programări (weekend fără program special)
-function hoursFor(date) {
-  if (SPECIAL_DAYS[date]) return SPECIAL_DAYS[date];
-  const wd = new Date(date + "T00:00:00Z").getUTCDay();
-  return wd >= 1 && wd <= 5 ? [OPEN, CLOSE] : null;
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 9000);
 }
+
+// ---- Programul și disponibilitatea zilelor (primite de la script) ----
+const hoursFor = d => state.hours[d] || null; // [deschidere, închidere] în minute, sau null dacă nu se fac programări
 // Cea mai târzie oră de start: programarea se termină până la ora de închidere; dacă durează mai mult decât programul zilei, începe la deschidere și poate depăși programul
 const latestStart = (d, h) => Math.max(h[0], h[1] - d);
+// În zilele speciale, o programare nu are voie să lase între ea și vecini (altă programare sau începutul/sfârșitul zilei) o pauză nefolositoare:
+// pauza trebuie să fie 0 sau cel puțin CFG.minGap minute (cât durează cel mai scurt serviciu), ca să mai poată fi umplută
+function compactOk(busy, h, s, e) {
+  let prevEnd = h[0], nextStart = h[1];
+  for (const [a, b] of busy) {
+    if (b <= s) prevEnd = Math.max(prevEnd, b);
+    if (a >= e) nextStart = Math.min(nextStart, a);
+  }
+  const before = s - prevEnd, after = nextStart - e;
+  return (before === 0 || before >= CFG.minGap) && (after === 0 || after >= CFG.minGap);
+}
+// Ora de start s este liberă: nu se suprapune cu nimic și, în zilele speciale, nu lasă pauze mici
+function slotFree(date, h, busy, s, dur) {
+  const e = s + dur;
+  if (busy.some(([a, b]) => s < b && e > a)) return false;
+  return !state.special[date] || compactOk(busy, h, s, e);
+}
 // Există cel puțin un interval liber, de durata dată, în ziua respectivă?
 function hasSlot(date, dur) {
-  const h = hoursFor(date), busy = state.busy[date];
+  const h = hoursFor(date), busy = state.busy[date] || [];
   if (!h) return false;
-  if (!busy) return true; // necunoscut: considerăm liber, se verifică la alegere
-  for (let s = h[0]; s <= latestStart(dur, h); s += STEP) if (!busy.some(([a, b]) => s < b && s + dur > a)) return true;
+  for (let s = h[0]; s <= latestStart(dur, h); s += STEP) if (slotFree(date, h, busy, s, dur)) return true;
   return false;
+}
+function slotStillOk() {
+  const h = hoursFor(state.date);
+  if (!h || state.time === null) return false;
+  const dur = totalMin();
+  return state.time >= h[0] && state.time <= latestStart(dur, h) && slotFree(state.date, h, state.busy[state.date] || [], state.time, dur);
+}
+// După o reîncărcare a datelor: scoate selecțiile care nu mai sunt valide și anunță (dacă nu e quiet)
+function revalidate(msg, quiet) {
+  let changed = false;
+  if (state.date && (!hoursFor(state.date) || (state.services.length && !hasSlot(state.date, totalMin())))) { state.date = null; state.time = null; changed = true; }
+  else if (state.time !== null && !slotStillOk()) { state.time = null; changed = true; }
+  renderCal(); renderSlots(false);
+  if (changed && !quiet) toast(msg || "Disponibilitatea s-a actualizat: ora aleasă nu mai este liberă. Alege altă oră.");
+  return changed;
 }
 
 // ---- Servicii (selecție multiplă) ----
 const totalMin = () => state.services.reduce((a, s) => a + s.min, 0);
-const MAXMIN = CLOSE - OPEN;
 function refreshServices() {
   const t = totalMin(), el = $("totalInfo");
   el.hidden = !t;
-  if (t) $("totalTxt").textContent = "Durată totală: " + fmtDur(t) + (t > MAXMIN ? " · luni–vineri se termină după ora " + hhmm(CLOSE) : "");
+  if (t) $("totalTxt").textContent = "Durată totală: " + fmtDur(t) + (t > CFG.close - CFG.open ? " · luni–vineri se termină după ora " + hhmm(CFG.close) : "");
 }
 let errTimer;
 function svcError(msg) {
@@ -315,25 +353,30 @@ const maxDate = todayRO(); maxDate.setUTCDate(maxDate.getUTCDate() + DAYS_AHEAD)
 let viewY = minDate.getUTCFullYear(), viewM = minDate.getUTCMonth();
 const monthIdx = (y, m) => y * 12 + m;
 
-// Doar pentru previzualizare (când nu e setată adresa scriptului): câteva zile ocupate de exemplu
+// Doar pentru previzualizare (fără script): program, zile speciale și câteva zile ocupate de exemplu
 function seedDemo() {
   let n = 0;
-  for (let k = 0; k < DAYS_AHEAD; k++) {
+  for (let k = 0; k <= DAYS_AHEAD; k++) {
     const d = new Date(minDate); d.setUTCDate(d.getUTCDate() + k);
-    const wd = d.getUTCDay(); if (wd < 1 || wd > 5) continue;
+    const key = iso(d), wd = d.getUTCDay(), sp = DEMO.special[key];
+    state.hours[key] = sp || (wd >= 1 && wd <= 5 ? [DEMO.open, DEMO.close] : null);
+    state.special[key] = !!sp; state.busy[key] = [];
+    if (!state.hours[key] || sp) continue;
     n++;
-    if (n % 5 === 3) state.busy[iso(d)] = [[OPEN, CLOSE]];
-    else if (n % 3 === 0) state.busy[iso(d)] = [[OPEN + 60, OPEN + 120]];
+    if (n % 5 === 3) state.busy[key] = [[DEMO.open, DEMO.close]];
+    else if (n % 3 === 0) state.busy[key] = [[DEMO.open + 60, DEMO.open + 120]];
   }
+  if (state.hours["2026-11-22"]) state.busy["2026-11-22"] = [[600, 690]]; // exemplu: o programare la 10:00
 }
 if (!APPS_SCRIPT_URL) seedDemo();
 
 function renderCal(swap) {
+  const blocked = state.loading || state.down;
   $("monthLabel").textContent = monthNames[viewM] + " " + viewY;
-  $("prev").disabled = state.loading || monthIdx(viewY, viewM) <= monthIdx(minDate.getUTCFullYear(), minDate.getUTCMonth());
-  $("next").disabled = state.loading || monthIdx(viewY, viewM) >= monthIdx(maxDate.getUTCFullYear(), maxDate.getUTCMonth());
+  $("prev").disabled = blocked || monthIdx(viewY, viewM) <= monthIdx(minDate.getUTCFullYear(), minDate.getUTCMonth());
+  $("next").disabled = blocked || monthIdx(viewY, viewM) >= monthIdx(maxDate.getUTCFullYear(), maxDate.getUTCMonth());
   const g = $("cal"); g.innerHTML = "";
-  g.classList.toggle("loading", state.loading); $("calWait").hidden = !state.loading;
+  g.classList.toggle("loading", state.loading); $("calWait").hidden = !state.loading; $("calDown").hidden = !state.down;
   if (swap && !REDUCED) { g.classList.remove("swap"); void g.offsetWidth; g.classList.add("swap"); }
   ["lu","ma","mi","jo","vi","sâ","du"].forEach(n => { const h = document.createElement("div"); h.className = "dow"; h.textContent = n; g.appendChild(h); });
   const offset = (new Date(Date.UTC(viewY, viewM, 1)).getUTCDay() + 6) % 7;
@@ -341,19 +384,18 @@ function renderCal(swap) {
   const need = totalMin() || shortest;
   const days = new Date(Date.UTC(viewY, viewM + 1, 0)).getUTCDate();
   for (let n = 1; n <= days; n++) {
-    const d = new Date(Date.UTC(viewY, viewM, n)), wd = d.getUTCDay(), key = iso(d);
+    const d = new Date(Date.UTC(viewY, viewM, n)), key = iso(d);
     const inRange = !!hoursFor(key) && d >= minDate && d <= maxDate;
     const full = inRange && !hasSlot(key, need);
     const b = document.createElement("button");
     b.type = "button"; b.textContent = n;
-    b.className = "day " + (!inRange ? "off" : full ? "full" : "avail") + (inRange && SPECIAL_DAYS[key] ? " special" : "");
-    b.disabled = !inRange || full || state.loading;
+    b.className = "day " + (!inRange ? "off" : full ? "full" : "avail") + (inRange && state.special[key] ? " special" : "");
+    b.disabled = !inRange || full || blocked;
     b.setAttribute("aria-pressed", String(key === state.date));
-    b.setAttribute("aria-label", longDate(key) + (inRange && SPECIAL_DAYS[key] ? " – program special" : "") + (full ? " – fără ore libere" : ""));
-    b.addEventListener("click", async () => {
+    b.setAttribute("aria-label", longDate(key) + (inRange && state.special[key] ? " – program special" : "") + (full ? " – fără ore libere" : ""));
+    b.addEventListener("click", () => {
       const firstTime = $("s3").hidden;
-      state.date = key; state.time = null; renderCal(); syncVisibility();
-      await loadBusy(key); renderSlots(true);
+      state.date = key; state.time = null; renderCal(); syncVisibility(); renderSlots(true);
       if (firstTime) goTo($("s3"));
     });
     g.appendChild(b);
@@ -362,26 +404,40 @@ function renderCal(swap) {
 $("prev").addEventListener("click", () => { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderCal(true); });
 $("next").addEventListener("click", () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderCal(true); });
 
-// ---- Disponibilitate din Google Calendar ----
+// ---- Disponibilitate din Google Calendar (prin script) ----
+async function fetchJson(url, opts, ms) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { ...opts, signal: ctl.signal }); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+// Cere programul și orele ocupate pentru toate zilele; înlocuiește datele doar dacă cererea reușește
+async function fetchRange() {
+  const j = await fetchJson(APPS_SCRIPT_URL + "?action=range&from=" + iso(minDate) + "&to=" + iso(maxDate), {}, 20000);
+  if (!j.ok || !j.days) throw new Error(j.error || "Răspuns neașteptat");
+  const busy = {}, hours = {}, special = {};
+  for (const [d, v] of Object.entries(j.days)) { busy[d] = v.b || []; hours[d] = v.h || null; special[d] = !!v.sp; }
+  state.busy = busy; state.hours = hours; state.special = special;
+  if (j.meta) Object.assign(CFG, j.meta);
+  state.loadedAt = Date.now();
+}
 async function loadRange() {
-  state.loading = true; renderCal();
+  state.loading = true; state.down = false; renderCal();
   if (!APPS_SCRIPT_URL) { await new Promise(r => setTimeout(r, 4000)); state.loading = false; renderCal(); finishRange(); return; } // doar în previzualizare: simulează încărcarea
-  try {
-    const r = await fetch(APPS_SCRIPT_URL + "?action=range&from=" + iso(minDate) + "&to=" + iso(maxDate));
-    const j = await r.json();
-    if (j.ok) Object.assign(state.busy, j.days);
-  } catch (e) { console.error(e); }
-  state.loading = false; renderCal(); finishRange();
+  let ok = false;
+  for (let i = 0; i < 2 && !ok; i++) { try { await fetchRange(); ok = true; } catch (e) { console.error(e); } } // a doua încercare automată
+  state.loading = false; state.down = !ok; renderCal(); finishRange();
 }
-async function loadBusy(date) {
-  if (!APPS_SCRIPT_URL || state.busy[date]) return;
-  $("slotsHint").hidden = false; $("slotsHint").textContent = "Se verifică orele libere…"; $("slots").innerHTML = "";
-  try {
-    const r = await fetch(APPS_SCRIPT_URL + "?action=busy&date=" + date);
-    const j = await r.json();
-    state.busy[date] = j.busy || [];
-  } catch (e) { console.error(e); state.busy[date] = null; }
+// Reîncarcă pe ascuns datele dacă sunt mai vechi de 5 minute (altcineva s-ar putea fi programat între timp)
+async function refreshSilently(quiet) {
+  if (!APPS_SCRIPT_URL || state.loading || state.down || state.refreshing || state.sending) return;
+  state.refreshing = true;
+  try { await fetchRange(); revalidate(null, quiet); } catch (e) { console.error(e); }
+  state.refreshing = false;
 }
+function refreshIfStale() { if (document.visibilityState === "visible" && state.loadedAt && Date.now() - state.loadedAt > STALE_MS) refreshSilently(); }
+document.addEventListener("visibilitychange", refreshIfStale);
+setInterval(refreshIfStale, 60000);
+$("retry").addEventListener("click", () => loadRange());
 
 // Afișează progresiv secțiunile: calendar după servicii, ore după zi, date după oră
 let rangeStarted = false, rangeDone = false, calScrolled = false;
@@ -412,16 +468,19 @@ function renderSlots(animate) {
   syncVisibility();
   updateSteps();
   if (!state.services.length || !state.date) { $("slotsHint").hidden = false; $("slotsHint").textContent = "Alege mai întâi serviciile și ziua."; return; }
-  const busy = state.busy[state.date];
-  if (APPS_SCRIPT_URL && busy === null) { $("slotsHint").hidden = false; $("slotsHint").textContent = "Nu am putut încărca orele libere. Reîncarcă pagina și încearcă din nou."; return; }
+  const h = hoursFor(state.date);
+  if (!h) return;
+  const busy = state.busy[state.date] || [];
   $("slotsHint").hidden = true;
   let any = false, i = 0;
-  const dur = totalMin(), h = hoursFor(state.date) || [OPEN, CLOSE];
-  const note = $("slotsNote"); note.hidden = dur <= h[1] - h[0];
+  const dur = totalMin(), special = !!state.special[state.date];
+  const note = $("slotsNote");
+  note.hidden = dur <= h[1] - h[0];
   note.textContent = "Serviciile alese durează mai mult decât programul din această zi, așa că programarea începe la " + hhmm(h[0]) + " și se termină după ora " + hhmm(h[1]) + ".";
   for (let s = h[0]; s <= latestStart(dur, h); s += STEP) {
     const e = s + dur;
-    const taken = (busy || []).some(([bs, be]) => s < be && e > bs);
+    const taken = busy.some(([bs, be]) => s < be && e > bs);
+    if (!taken && special && !compactOk(busy, h, s, e)) continue; // ora lasă pauze mici între programări
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip" + (animate ? " pop" : ""); b.style.setProperty("--i", i++); b.textContent = hhmm(s);
     b.setAttribute("aria-pressed", String(state.time === s));
@@ -440,7 +499,7 @@ function showForm() {
 }
 
 // ---- Trimitere ----
-const specs = [["nume", v => v.length > 1], ["tel", v => /^[+\d][\d\s().-]{6,}$/.test(v)], ["email", v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)]];
+const specs = [["nume", v => v.length > 1], ["email", v => /^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(v)]];
 specs.forEach(([id]) => $(id).addEventListener("input", e => { e.target.closest(".field").classList.remove("invalid"); e.target.removeAttribute("aria-invalid"); }));
 
 function confetti() {
@@ -455,6 +514,7 @@ function confetti() {
 }
 
 $("send").addEventListener("click", async () => {
+  if (state.sending) return;
   const res = $("result");
   const fail = t => { res.textContent = t; res.hidden = false; };
   res.hidden = true;
@@ -465,36 +525,46 @@ $("send").addEventListener("click", async () => {
     return isBad;
   });
   if (bad.length) { fail("Completează corect câmpurile marcate cu *."); $(bad[0][0]).focus(); return; }
-  const btn = $("send"); btn.disabled = true; btn.textContent = "Se trimite…";
+  const btn = $("send"); state.sending = true; btn.disabled = true; btn.textContent = "Se trimite…";
+  const email = $("email").value.trim().toLowerCase();
+  // Cod unic per cerere: dacă răspunsul se pierde și fata apasă din nou, scriptul nu face o a doua programare
+  const key = JSON.stringify([state.services.map(s => s.id), state.date, state.time, email]);
+  if (key !== state.ridKey) { state.ridKey = key; state.rid = uid(); }
   const payload = {
     services: state.services.map(s => s.name), service: state.services.map(s => s.name).join(" + "), minutes: totalMin(),
-    date: state.date, start: hhmm(state.time),
-    name: $("nume").value.trim(), phone: $("tel").value.trim(), email: $("email").value.trim(), note: $("note").value.trim()
+    date: state.date, start: hhmm(state.time), rid: state.rid, website: $("website").value,
+    name: $("nume").value.trim(), email: email, note: $("note").value.trim()
   };
   try {
     let j;
     if (!APPS_SCRIPT_URL) { j = { ok: true, demo: true }; }
-    else {
-      const r = await fetch(APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-      j = await r.json();
-    }
+    else { j = await fetchJson(APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) }, 30000); }
     if (j.ok) {
       $("doneTitle").textContent = "Programare confirmată: " + payload.service + ", " + longDate(payload.date) + ", " + payload.start;
       $("doneText").textContent = j.demo
         ? "Mod demonstrativ: nimic nu a fost salvat și nu s-a trimis niciun email."
-        : j.emailSent
-          ? "Ți-am trimis un email de confirmare la " + payload.email + ", cu butonul pentru a adăuga programarea în Google Calendar."
-          : "Programarea este înregistrată, dar nu am putut trimite emailul de confirmare. Salvează-ți data și ora.";
+        : j.dup
+          ? "Programarea ta era deja înregistrată. Verifică emailul " + email + " (și folderul Spam) pentru confirmare."
+          : j.emailSent
+            ? "Ți-am trimis un email de confirmare la " + email + ", cu butonul pentru a adăuga programarea în Google Calendar. Dacă nu îl găsești, verifică și folderul Spam."
+            : "Programarea este înregistrată, dar nu am putut trimite emailul de confirmare. Salvează-ți data și ora.";
       $("flow").hidden = true; $("done").hidden = false;
       window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
       confetti();
-      if (APPS_SCRIPT_URL) { delete state.busy[payload.date]; loadBusy(payload.date).then(() => renderCal()); }
+      state.time = null; state.rid = state.ridKey = null;
+      state.sending = false; refreshSilently(true); // actualizează calendarul pe ascuns, fără mesaje
     } else {
-      fail(j.error || "Nu s-a putut face programarea.");
-      delete state.busy[state.date]; await loadBusy(state.date); renderCal(); renderSlots(false);
+      const msg = j.error || "Nu s-a putut face programarea.";
+      state.sending = false;
+      let changed = false;
+      if (APPS_SCRIPT_URL) { try { await fetchRange(); changed = revalidate(msg); } catch (e) { console.error(e); } }
+      if (changed) goTo($(state.date ? "s3" : "s2")); else fail(msg);
     }
-  } catch (e) { console.error(e); fail("Eroare de conexiune. Încearcă din nou."); }
-  btn.disabled = false; btn.textContent = "Trimite programarea";
+  } catch (e) {
+    console.error(e);
+    fail("Nu am putut confirma dacă programarea s-a făcut. Verifică-ți emailul (și folderul Spam): dacă ai primit confirmarea, programarea e făcută. Dacă nu, apasă din nou „Trimite programarea” – nu se va dubla.");
+  }
+  state.sending = false; btn.disabled = false; btn.textContent = "Trimite programarea";
 });
 
 $("again").addEventListener("click", () => {
